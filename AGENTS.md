@@ -86,3 +86,29 @@ if (cam.open("192.168.1.2")) {                       // 接続 + ハンドシェ
 - `get()` はオブジェクト全体をメモリに載せる（数十MBのCR3は問題なし）。
 - `list()` / `get()` は同期実行で呼び出しスレッドをブロックする（GUI はスレッド化が課題）。
 - 拡張候補: `GetPartialObject(0x101B)` によるチャンク転送＋進捗コールバック＋レジューム、`GetThumb(0x100A)` でサムネイル一覧、event チャネル監視による撮影即転送。
+
+## 参考資料
+
+実装の際に参照した資料（有用度順）。
+
+### 実装リファレンス（最重要）
+
+- **gphoto2 / libgphoto2** — Canon 拡張オペコードや PTP/IP フレーミングの実装リファレンス。
+  - リポジトリ: https://github.com/gphoto/libgphoto2
+  - PTP/IP 実装: https://github.com/gphoto/libgphoto2/blob/master/camlibs/ptp2/ptpip.c
+  - オペコード定義（Canon 拡張含む）: https://github.com/gphoto/libgphoto2/blob/master/camlibs/ptp2/ptp.h
+- **Julian Schroden — "Exploring the PTP/IP Protocol" 連載** — Canon EOS のペアリング〜撮影をパケットレベルで解説（最も詳しい技術記事）。
+  - Part 2 ペアリングと初期化: https://julianschroden.com/post/2023-05-10-pairing-and-initializing-a-ptp-ip-connection-with-a-canon-eos-camera/
+  - Part 3 プロパティ制御: https://julianschroden.com/post/2023-05-28-controlling-properties-using-ptp-ip-on-canon-eos-cameras/
+  - Part 4 画像キャプチャ: https://julianschroden.com/post/2023-06-15-capturing-images-using-ptp-ip-on-canon-eos-cameras/
+
+### Canon EOS プロトコルの解析事例
+
+- **featherbear/eos-ptp** — Canon EOS の Wi-Fi リモート制御プロトコル解析（EOS R 対象）: https://github.com/featherbear/eos-ptp
+- **Check Point Research — "Say Cheese: Ransomware-ing a DSLR Camera"（2019）** — EOS Utility ハンドシェイクの解析。16バイトID・hostname 非検証・UPnP での ID ブロードキャストなど、GUID 周りの知見の出所: https://research.checkpoint.com/2019/say-cheese-ransomware-ing-a-dslr-camera/
+- **LWN.net — "Exploiting network-enabled digital cameras"** — Canon の PTP/IP 実装と EOS Utility モードの背景: https://lwn.net/Articles/545226/
+- **SUSE Hack Week — Wi-Fi 対応 Canon の gphoto サポート** — UUID 問題や SSDP ディスカバリの経緯: https://hackweek.opensuse.org/12/projects/support-for-wifi-enabled-canon-cameras-in-gphoto
+
+### 規格（土台）
+
+- **PTP/IP** は CIPA が策定（PTP-IP: CIPA DC-005）、PTP 本体は ISO 15740。CIPA 規格一覧から辿れる: https://www.cipa.jp/std/std-sec_e.html
