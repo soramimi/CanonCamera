@@ -1,0 +1,9 @@
+.claude/
+.gitignore/
+.qtcreator/
+bin/
+build/
+*.CR3
+*.JPG
+*.exe
+*.obj
