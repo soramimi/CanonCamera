@@ -3,15 +3,30 @@
 // CanonCamera の実装。PTP/IP のフレーミング・ハンドシェイク・オペレーションは
 // すべてこのファイル内に閉じ込める（ptpip_prototype.cpp のロジックを整理したもの）。
 
-#include "canoncamera.h"
+#include "CanonCamera.h"
 
 #include <cstdio>
 #include <cstring>
 #include <stdexcept>
+
+#ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
-
 #pragma comment(lib, "ws2_32.lib")
+#else
+#include <sys/socket.h>
+#include <netdb.h>
+#include <unistd.h>
+typedef int SOCKET;
+#define INVALID_SOCKET (-1)
+#define closesocket(s) close(s)
+#define MAKEWORD(a, b) (((b) << 8) | (a))
+static char const *WSAGetLastError()
+{
+	return strerror(errno);
+}
+#endif
+
 
 namespace {
 
@@ -107,8 +122,9 @@ public:
 		hints.ai_family = AF_INET;
 		hints.ai_socktype = SOCK_STREAM;
 		std::string ports = std::to_string(port);
-		if (getaddrinfo(ip.c_str(), ports.c_str(), &hints, &res) != 0)
+		if (getaddrinfo(ip.c_str(), ports.c_str(), &hints, &res) != 0) {
 			throw std::runtime_error("getaddrinfo failed");
+		}
 		SOCKET s = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
 		if (s == INVALID_SOCKET) {
 			freeaddrinfo(res);
@@ -117,7 +133,11 @@ public:
 		if (::connect(s, res->ai_addr, (int)res->ai_addrlen) != 0) {
 			freeaddrinfo(res);
 			closesocket(s);
+#ifdef _WIN32
 			throw std::runtime_error("connect() failed: " + std::to_string(WSAGetLastError()));
+#else
+			throw std::runtime_error("connect() failed: " + std::to_string(errno));
+#endif
 		}
 		freeaddrinfo(res);
 		return TcpSocket(s);
@@ -125,7 +145,11 @@ public:
 
 	void set_recv_timeout(int ms)
 	{
+#ifdef _WIN32
 		DWORD t = (DWORD)ms;
+#else
+		socklen_t t = (socklen_t)ms;
+#endif
 		setsockopt(sock_, SOL_SOCKET, SO_RCVTIMEO, (char const *)&t, sizeof(t));
 	}
 
@@ -134,7 +158,13 @@ public:
 		size_t off = 0;
 		while (off < data.size()) {
 			int n = ::send(sock_, (char const *)data.data() + off, (int)(data.size() - off), 0);
-			if (n <= 0) throw std::runtime_error("send failed: " + std::to_string(WSAGetLastError()));
+			if (n <= 0) {
+#ifdef _WIN32
+				throw std::runtime_error("send failed: " + std::to_string(WSAGetLastError()));
+#else
+				throw std::runtime_error("send failed: " + std::to_string(errno));
+#endif
+			}
 			off += n;
 		}
 	}
@@ -146,9 +176,13 @@ public:
 			int n = ::recv(sock_, (char *)buf + off, (int)(len - off), 0);
 			if (n == 0) throw std::runtime_error("connection closed by peer");
 			if (n < 0) {
+#ifdef _WIN32
 				int e = WSAGetLastError();
 				if (e == WSAETIMEDOUT) throw std::runtime_error("recv timeout (no reply from camera)");
 				throw std::runtime_error("recv failed: " + std::to_string(e));
+#else
+				throw std::runtime_error("recv failed: " + std::to_string(errno));
+#endif
 			}
 			off += n;
 		}
@@ -264,7 +298,9 @@ struct CanonCamera::Impl {
 	Impl() { memcpy(guid, kDefaultGuid, 16); }
 	~Impl()
 	{
+#ifdef _WIN32
 		if (wsaStarted) WSACleanup();
+#endif
 	}
 
 	uint32_t next_tid() { return ++transaction; }
@@ -321,12 +357,14 @@ struct CanonCamera::Impl {
 
 	void connect(std::string const &ip)
 	{
+#ifdef _WIN32
 		WSADATA wsa;
 		if (!wsaStarted) {
 			if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
 				throw std::runtime_error("WSAStartup failed");
 			wsaStarted = true;
 		}
+#endif
 
 		// command チャネル
 		cmd.reset(new TcpSocket(TcpSocket::connect(ip, 15740)));

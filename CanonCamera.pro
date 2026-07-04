@@ -7,18 +7,22 @@ QT += core gui widgets
 
 DESTDIR = $$PWD/bin
 
+INCLUDEPATH += \
+        $$PWD \
+        $$PWD/src
+
 # 日本語コメントを含む UTF-8 ソースを MSVC が CP932 と誤読するのを防ぐ
 msvc: QMAKE_CXXFLAGS += /utf-8
 
 SOURCES += \
         main.cpp \
-        canoncamera.cpp \
+        CanonCamera.cpp \
         src/ImageView.cpp \
         src/MainWindow.cpp \
         src/MemoryReader.cpp
 
 HEADERS += \
-        canoncamera.h \
+        CanonCamera.h \
         src/ImageView.h \
         src/MainWindow.h \
         src/MemoryReader.h

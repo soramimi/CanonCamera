@@ -1,6 +1,6 @@
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
-#include "canoncamera.h"
+#include "CanonCamera.h"
 #include "MemoryReader.h"
 #include "ImageView.h"
 #include <cstdio>
