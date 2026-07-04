@@ -480,27 +480,30 @@ std::vector<CanonCamera::Item> CanonCamera::list(Filter filter)
 	}
 }
 
-bool CanonCamera::get(Item const &item, char const *savepath)
+std::optional<std::vector<uint8_t>> CanonCamera::get(Item const &item)
 {
-	if (!isOpen()) return fail("not open");
+	if (!isOpen()) {
+		error_ = "not open";
+		return std::nullopt;
+	}
 	try {
 		std::vector<uint8_t> obj;
 		uint16_t rc = impl_->transact(PTP_OP_GetObject, { item.handle }, &obj);
 		if (rc != PTP_RC_OK) {
 			char m[64];
 			snprintf(m, sizeof(m), "GetObject failed rc=0x%04x", rc);
-			return fail(m);
+			error_ = m;
+			return std::nullopt;
 		}
-		FILE *f = fopen(savepath, "wb");
-		if (!f) return fail(std::string("cannot open file: ") + savepath);
-		size_t wrote = obj.empty() ? 0 : fwrite(obj.data(), 1, obj.size(), f);
-		fclose(f);
-		if (wrote != obj.size()) return fail("write incomplete");
 		// ObjectInfo のサイズが分かっている場合は検証
-		if (item.size && obj.size() != item.size)
-			return fail("size mismatch (expected " + std::to_string(item.size) + ", got " + std::to_string(obj.size()) + ")");
-		return true;
+		if (item.size && obj.size() != item.size) {
+			error_ = "size mismatch (expected " + std::to_string(item.size) +
+				", got " + std::to_string(obj.size()) + ")";
+			return std::nullopt;
+		}
+		return obj;
 	} catch (std::exception const &e) {
-		return fail(e.what());
+		error_ = e.what();
+		return std::nullopt;
 	}
 }

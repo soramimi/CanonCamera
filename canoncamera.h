@@ -6,7 +6,7 @@
 //   CanonCamera cam;
 //   if (cam.open("192.168.1.2")) {
 //       for (auto& it : cam.list())
-//           cam.get(it, it.filename.c_str());
+//           auto opt = cam.get(it);
 //       cam.close();
 //   }
 //
@@ -18,6 +18,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <optional>
 
 class CanonCamera {
 public:
@@ -63,8 +64,8 @@ public:
 	// 失敗時は空 vector を返し lastError() に理由が入る。
 	std::vector<Item> list(Filter filter = Filter::All);
 
-	// item をダウンロードして savepath に保存する。成功で true。
-	bool get(Item const &item, char const *savepath);
+	// item をダウンロードする。
+	std::optional<std::vector<uint8_t>> get(Item const &item);
 
 	// クライアント GUID を差し替える（16 バイト, ワイヤ上のバイト順）。
 	// open() より前に呼ぶこと。省略時は既定値を使う。
